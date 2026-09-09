@@ -1,0 +1,32 @@
+trigger:
+  name: todo-api-push-trigger
+  identifier: todoapi_push_trigger
+  enabled: true
+  projectIdentifier: <+input>
+  orgIdentifier: <+input>
+  pipelineIdentifier: todoapi_ci
+  source:
+    type: Webhook
+    spec:
+      type: Github
+      spec:
+        type: Push
+        spec:
+          connectorRef: <+input>
+          payloadConditions:
+            - key: targetBranch
+              operator: Equals
+              value: main
+          # Monorepo path filter: only trigger when files under apps/todo-api change
+          pathFilters:
+            - apps/todo-api/**
+  inputYaml: |
+    pipeline:
+      identifier: todoapi_ci
+      properties:
+        ci:
+          codebase:
+            build:
+              type: Branch
+              spec:
+                branch: main

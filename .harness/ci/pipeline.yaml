@@ -1,0 +1,240 @@
+pipeline:
+  name: todo-api-ci-pipeline
+  identifier: todoapi_ci
+  projectIdentifier: <+input>
+  orgIdentifier: <+input>
+  tags:
+    app: todo-api
+    team: platform-engineering
+
+  # Monorepo layout: this pipeline only builds apps/todo-api.
+  # Other apps/services in this repo have (or will have) their own pipeline under .harness/ci/.
+  properties:
+    ci:
+      codebase:
+        connectorRef: <+input>
+        repoName: <+input>
+        build: <+input>
+
+  stages:
+    # Stage 1: Build and Test (Developer Journey)
+    - stage:
+        name: Build and Test
+        identifier: build_and_test
+        type: CI
+        spec:
+          cloneCodebase: true
+
+          # Platform configuration
+          platform:
+            os: Linux
+            arch: Amd64
+
+          # Runtime infrastructure
+          runtime:
+            type: Cloud
+            spec: {}
+
+          # CI Steps
+          execution:
+            steps:
+              # Step 1: Initialize and cache dependencies
+              - step:
+                  type: RestoreCacheGCS
+                  name: Restore Maven Cache
+                  identifier: restore_maven_cache
+                  spec:
+                    connectorRef: <+input>
+                    bucket: <+input>
+                    key: maven-deps-{{ checksum "apps/todo-api/pom.xml" }}
+                    archiveFormat: Tar
+                    failIfKeyNotFound: false
+
+              # Step 2: Run Tests with Test Intelligence
+              - step:
+                  type: RunTests
+                  name: Run Unit and Integration Tests
+                  identifier: run_tests
+                  spec:
+                    connectorRef: <+input>
+                    image: maven:3.9-eclipse-temurin-17
+                    language: Java
+                    buildTool: Maven
+                    workingDirectory: apps/todo-api
+                    args: clean test
+                    runOnlySelectedTests: true # Test Intelligence enabled
+                    preCommand: |
+                      echo "Running tests with Harness Test Intelligence"
+                      echo "Only changed and affected tests will be executed"
+                    postCommand: |
+                      echo "Test execution completed"
+                      echo "Test reports available in apps/todo-api/target/surefire-reports"
+                    reports:
+                      type: JUnit
+                      spec:
+                        paths:
+                          - "apps/todo-api/target/surefire-reports/*.xml"
+                    # Test Intelligence Configuration
+                    intelligenceMode: true
+                    enableTestSplitting: false
+
+                  # Failure strategy
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: MarkAsFailure
+
+              # Step 3: Build Application (Build Intelligence)
+              - step:
+                  type: Run
+                  name: Build Application
+                  identifier: build_app
+                  spec:
+                    connectorRef: <+input>
+                    image: maven:3.9-eclipse-temurin-17
+                    shell: Bash
+                    workingDirectory: apps/todo-api
+                    command: |
+                      echo "Building application with Maven"
+                      mvn clean package -DskipTests -B
+
+                      echo "Build completed successfully"
+                      ls -lh target/*.jar
+
+                    # Environment variables
+                    envVariables:
+                      MAVEN_OPTS: "-Xmx1024m"
+
+                  # When condition - only if tests passed
+                  when:
+                    stageStatus: Success
+
+              # Step 4: Save Maven Cache
+              - step:
+                  type: SaveCacheGCS
+                  name: Save Maven Cache
+                  identifier: save_maven_cache
+                  spec:
+                    connectorRef: <+input>
+                    bucket: <+input>
+                    key: maven-deps-{{ checksum "apps/todo-api/pom.xml" }}
+                    sourcePaths:
+                      - /root/.m2/repository
+                    archiveFormat: Tar
+
+              # Step 5: Build and Push Docker Image
+              - step:
+                  type: BuildAndPushDockerRegistry
+                  name: Build and Push Docker Image
+                  identifier: build_push_docker
+                  spec:
+                    connectorRef: <+input>
+                    repo: <+input>
+                    tags:
+                      - <+pipeline.sequenceId>
+                      - latest
+                      - <+codebase.branch>-<+codebase.shortCommitSha>
+                    dockerfile: apps/todo-api/Dockerfile
+                    context: apps/todo-api
+
+                    # Build arguments
+                    buildArgs:
+                      BUILD_DATE: <+pipeline.startTs>
+                      VCS_REF: <+codebase.commitSha>
+                      VERSION: "1.0.0"
+
+                    # Optimize build
+                    optimize: true
+
+                  when:
+                    stageStatus: Success
+
+    # Stage 2: Security Gate (Template Reference)
+    # This stage will reference the external security template
+    # that will be created by the DevSecOps team
+    - stage:
+        name: Security Scan Gate
+        identifier: security_gate
+        template:
+          templateRef: security_scan_template
+          versionLabel: stable
+          templateInputs:
+            type: CI
+            spec:
+              execution:
+                steps:
+                  - step:
+                      identifier: sca_scan
+                      type: SecurityScan
+                      spec:
+                        tool: Snyk
+                        mode: ingestion
+                        config: default
+                        target: <+input>
+                        # SCA scan configuration will be in the template
+
+                  - step:
+                      identifier: sast_scan
+                      type: SecurityScan
+                      spec:
+                        tool: Semgrep
+                        mode: orchestration
+                        config: default
+                        target: <+input>
+                        # SAST scan configuration will be in the template
+
+        # Failure strategy for security gate
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: MarkAsFailure
+
+        # Security gate is mandatory (enforced by OPA policy)
+        when:
+          pipelineStatus: Success
+
+  # Pipeline Variables
+  variables:
+    - name: APP_NAME
+      type: String
+      description: Application name
+      value: todo-api
+
+    - name: JAVA_VERSION
+      type: String
+      description: Java version
+      value: "17"
+
+    - name: MAVEN_VERSION
+      type: String
+      description: Maven version
+      value: "3.9"
+
+  # Notification rules
+  notificationRules:
+    - name: Pipeline Failure Notification
+      identifier: pipeline_failure
+      pipelineEvents:
+        - type: PipelineFailed
+      notificationMethod:
+        type: Email
+        spec:
+          userGroups:
+            - <+input>
+          recipients:
+            - <+pipeline.triggeredBy.email>
+
+    - name: Security Gate Failure
+      identifier: security_failure
+      pipelineEvents:
+        - type: StageFailed
+          forStages:
+            - security_gate
+      notificationMethod:
+        type: Slack
+        spec:
+          webhookUrl: <+input>

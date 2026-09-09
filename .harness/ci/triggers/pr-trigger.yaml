@@ -1,0 +1,33 @@
+trigger:
+  name: todo-api-pr-trigger
+  identifier: todoapi_pr_trigger
+  enabled: true
+  projectIdentifier: <+input>
+  orgIdentifier: <+input>
+  pipelineIdentifier: todoapi_ci
+  source:
+    type: Webhook
+    spec:
+      type: Github
+      spec:
+        type: PullRequest
+        spec:
+          connectorRef: <+input>
+          autoAbortPreviousExecutions: true
+          payloadConditions:
+            - key: targetBranch
+              operator: Equals
+              value: main
+          # Monorepo path filter: only trigger when files under apps/todo-api change
+          pathFilters:
+            - apps/todo-api/**
+  inputYaml: |
+    pipeline:
+      identifier: todoapi_ci
+      properties:
+        ci:
+          codebase:
+            build:
+              type: PR
+              spec:
+                number: <+trigger.prNumber>
