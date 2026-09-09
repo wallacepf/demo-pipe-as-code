@@ -2,8 +2,8 @@ trigger:
   name: todo-api-push-trigger
   identifier: todoapi_push_trigger
   enabled: true
-  projectIdentifier: <+input>
-  orgIdentifier: <+input>
+  projectIdentifier: Demo_Quinto_Andar
+  orgIdentifier: default
   pipelineIdentifier: todoapi_ci
   source:
     type: Webhook
@@ -12,7 +12,7 @@ trigger:
       spec:
         type: Push
         spec:
-          connectorRef: <+input>
+          connectorRef: Personal_GH
           payloadConditions:
             - key: targetBranch
               operator: Equals

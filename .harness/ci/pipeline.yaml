@@ -1,8 +1,8 @@
 pipeline:
   name: todo-api-ci-pipeline
   identifier: todoapi_ci
-  projectIdentifier: <+input>
-  orgIdentifier: <+input>
+  projectIdentifier: Demo_Quinto_Andar
+  orgIdentifier: default
   tags:
     app: todo-api
     team: platform-engineering
@@ -12,8 +12,8 @@ pipeline:
   properties:
     ci:
       codebase:
-        connectorRef: <+input>
-        repoName: <+input>
+        connectorRef: Personal_GH
+        repoName: demo-pipe-as-code
         build: <+input>
 
   stages:
@@ -25,38 +25,28 @@ pipeline:
         spec:
           cloneCodebase: true
 
-          # Platform configuration
-          platform:
-            os: Linux
-            arch: Amd64
+          # Self-managed build infra: runs on the org-level Kubernetes cluster
+          # connector, reached through harness-delegate.
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: org.kindcluster
+              namespace: dev-env-ci
 
-          # Runtime infrastructure
-          runtime:
-            type: Cloud
-            spec: {}
+          # NOTE: Cache Intelligence intentionally left out. On self-managed
+          # Kubernetes infra it requires a default object storage connector
+          # (S3/GCS/Azure Blob) configured in Default Settings, which we
+          # don't have yet. Re-add once an S3 bucket/connector is available.
 
           # CI Steps
           execution:
             steps:
-              # Step 1: Initialize and cache dependencies
-              - step:
-                  type: RestoreCacheGCS
-                  name: Restore Maven Cache
-                  identifier: restore_maven_cache
-                  spec:
-                    connectorRef: <+input>
-                    bucket: <+input>
-                    key: maven-deps-{{ checksum "apps/todo-api/pom.xml" }}
-                    archiveFormat: Tar
-                    failIfKeyNotFound: false
-
-              # Step 2: Run Tests with Test Intelligence
+              # Step 1: Run Tests with Test Intelligence
               - step:
                   type: RunTests
                   name: Run Unit and Integration Tests
                   identifier: run_tests
                   spec:
-                    connectorRef: <+input>
                     image: maven:3.9-eclipse-temurin-17
                     language: Java
                     buildTool: Maven
@@ -86,13 +76,12 @@ pipeline:
                         action:
                           type: MarkAsFailure
 
-              # Step 3: Build Application (Build Intelligence)
+              # Step 2: Build Application
               - step:
                   type: Run
                   name: Build Application
                   identifier: build_app
                   spec:
-                    connectorRef: <+input>
                     image: maven:3.9-eclipse-temurin-17
                     shell: Bash
                     workingDirectory: apps/todo-api
@@ -111,91 +100,11 @@ pipeline:
                   when:
                     stageStatus: Success
 
-              # Step 4: Save Maven Cache
-              - step:
-                  type: SaveCacheGCS
-                  name: Save Maven Cache
-                  identifier: save_maven_cache
-                  spec:
-                    connectorRef: <+input>
-                    bucket: <+input>
-                    key: maven-deps-{{ checksum "apps/todo-api/pom.xml" }}
-                    sourcePaths:
-                      - /root/.m2/repository
-                    archiveFormat: Tar
-
-              # Step 5: Build and Push Docker Image
-              - step:
-                  type: BuildAndPushDockerRegistry
-                  name: Build and Push Docker Image
-                  identifier: build_push_docker
-                  spec:
-                    connectorRef: <+input>
-                    repo: <+input>
-                    tags:
-                      - <+pipeline.sequenceId>
-                      - latest
-                      - <+codebase.branch>-<+codebase.shortCommitSha>
-                    dockerfile: apps/todo-api/Dockerfile
-                    context: apps/todo-api
-
-                    # Build arguments
-                    buildArgs:
-                      BUILD_DATE: <+pipeline.startTs>
-                      VCS_REF: <+codebase.commitSha>
-                      VERSION: "1.0.0"
-
-                    # Optimize build
-                    optimize: true
-
-                  when:
-                    stageStatus: Success
-
-    # Stage 2: Security Gate (Template Reference)
-    # This stage will reference the external security template
-    # that will be created by the DevSecOps team
-    - stage:
-        name: Security Scan Gate
-        identifier: security_gate
-        template:
-          templateRef: security_scan_template
-          versionLabel: stable
-          templateInputs:
-            type: CI
-            spec:
-              execution:
-                steps:
-                  - step:
-                      identifier: sca_scan
-                      type: SecurityScan
-                      spec:
-                        tool: Snyk
-                        mode: ingestion
-                        config: default
-                        target: <+input>
-                        # SCA scan configuration will be in the template
-
-                  - step:
-                      identifier: sast_scan
-                      type: SecurityScan
-                      spec:
-                        tool: Semgrep
-                        mode: orchestration
-                        config: default
-                        target: <+input>
-                        # SAST scan configuration will be in the template
-
-        # Failure strategy for security gate
-        failureStrategies:
-          - onFailure:
-              errors:
-                - AllErrors
-              action:
-                type: MarkAsFailure
-
-        # Security gate is mandatory (enforced by OPA policy)
-        when:
-          pipelineStatus: Success
+              # NOTE: Build and Push Docker Image step intentionally left out.
+              # No push-capable registry connector is available yet (Harness
+              # Artifact Registry is not licensed on this account). Add the
+              # BuildAndPushDockerRegistry step back once the registry/license
+              # is available.
 
   # Pipeline Variables
   variables:
@@ -224,17 +133,6 @@ pipeline:
         type: Email
         spec:
           userGroups:
-            - <+input>
+            - _project_all_users
           recipients:
             - <+pipeline.triggeredBy.email>
-
-    - name: Security Gate Failure
-      identifier: security_failure
-      pipelineEvents:
-        - type: StageFailed
-          forStages:
-            - security_gate
-      notificationMethod:
-        type: Slack
-        spec:
-          webhookUrl: <+input>

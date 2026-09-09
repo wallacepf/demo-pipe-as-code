@@ -2,8 +2,8 @@ trigger:
   name: todo-api-pr-trigger
   identifier: todoapi_pr_trigger
   enabled: true
-  projectIdentifier: <+input>
-  orgIdentifier: <+input>
+  projectIdentifier: Demo_Quinto_Andar
+  orgIdentifier: default
   pipelineIdentifier: todoapi_ci
   source:
     type: Webhook
@@ -12,7 +12,7 @@ trigger:
       spec:
         type: PullRequest
         spec:
-          connectorRef: <+input>
+          connectorRef: Personal_GH
           autoAbortPreviousExecutions: true
           payloadConditions:
             - key: targetBranch
