@@ -52,31 +52,24 @@ pipeline:
           # CI Steps
           execution:
             steps:
-              # Step 1: Run Tests with Test Intelligence
+              # Step 1: Run Tests with Test Intelligence (v2 Test step: the
+              # RunTests/TI-v1 step assumes the pom.xml sits at the clone
+              # root and has no working-directory equivalent, which breaks
+              # in this monorepo layout — see apps/todo-api/pom.xml).
               - step:
-                  type: RunTests
+                  type: Test
                   name: Run Unit and Integration Tests
                   identifier: run_tests
                   spec:
                     connectorRef: org.Docker_Hub_Anom
                     image: maven:3.9-eclipse-temurin-17
-                    language: Java
-                    buildTool: Maven
-                    workingDirectory: apps/todo-api
-                    args: clean test
-                    runOnlySelectedTests: true # Test Intelligence enabled
-                    preCommand: |
-                      echo "Running tests with Harness Test Intelligence"
-                      echo "Only changed and affected tests will be executed"
-                    postCommand: |
-                      echo "Test execution completed"
-                      echo "Test reports available in apps/todo-api/target/surefire-reports"
+                    shell: Sh
+                    command: |
+                      cd apps/todo-api
+                      mvn clean test
+                    intelligenceMode: true # Test Intelligence enabled
                     reports:
-                      type: JUnit
-                      spec:
-                        paths:
-                          - "apps/todo-api/target/surefire-reports/*.xml"
-                    enableTestSplitting: false
+                      - "apps/todo-api/target/surefire-reports/*.xml"
 
               # Step 2: Build Application
               - step:
