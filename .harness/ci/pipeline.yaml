@@ -32,6 +32,9 @@ pipeline:
             spec:
               connectorRef: org.kindcluster
               namespace: dev-env-ci
+              automountServiceAccountToken: true
+              nodeSelector: {}
+              os: Linux
 
           # Cache Intelligence: connector/bucket/region come from Default
           # Settings (org connector org.aws_wallace_account, bucket name and
