@@ -64,13 +64,15 @@ pipeline:
                     connectorRef: org.Docker_Hub_Anom
                     image: maven:3.9-eclipse-temurin-17
                     shell: Sh
+                    workingDirectory: apps/todo-api
                     command: |
-                      cd apps/todo-api
                       mvn clean test
-                    intelligenceMode: true # Test Intelligence enabled
+                    intelligenceMode: true
                     reports:
-                      - "apps/todo-api/target/surefire-reports/*.xml"
-
+                      type: JUnit
+                      spec:
+                        paths:
+                          - "target/surefire-reports/*.xml"
               # Step 2: Build Application
               - step:
                   type: Run
