@@ -39,6 +39,13 @@ pipeline:
           caching:
             enabled: true
 
+          # Build Intelligence: reuses the same object storage Default Settings
+          # as Cache Intelligence (org.aws_wallace_account) since there is no
+          # separate connector/bucket setting for ci_build_intel_*. Supported
+          # for Maven (3.9+) on Kubernetes self-hosted infra.
+          buildIntelligence:
+            enabled: true
+
           # CI Steps
           execution:
             steps:
@@ -66,17 +73,7 @@ pipeline:
                       spec:
                         paths:
                           - "apps/todo-api/target/surefire-reports/*.xml"
-                    # Test Intelligence Configuration
-                    intelligenceMode: true
                     enableTestSplitting: false
-
-                  # Failure strategy
-                  failureStrategies:
-                    - onFailure:
-                        errors:
-                          - AllErrors
-                        action:
-                          type: MarkAsFailure
 
               # Step 2: Build Application
               - step:
@@ -123,34 +120,3 @@ pipeline:
                   when:
                     stageStatus: Success
                     condition: <+codebase.build.type> == "Push"
-
-  # Pipeline Variables
-  variables:
-    - name: APP_NAME
-      type: String
-      description: Application name
-      value: todo-api
-
-    - name: JAVA_VERSION
-      type: String
-      description: Java version
-      value: "17"
-
-    - name: MAVEN_VERSION
-      type: String
-      description: Maven version
-      value: "3.9"
-
-  # Notification rules
-  notificationRules:
-    - name: Pipeline Failure Notification
-      identifier: pipeline_failure
-      pipelineEvents:
-        - type: PipelineFailed
-      notificationMethod:
-        type: Email
-        spec:
-          userGroups:
-            - _project_all_users
-          recipients:
-            - <+pipeline.triggeredBy.email>
