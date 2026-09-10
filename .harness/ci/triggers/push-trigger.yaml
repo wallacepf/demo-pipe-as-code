@@ -12,7 +12,7 @@ trigger:
       spec:
         type: Push
         spec:
-          connectorRef: Personal_GH
+          connectorRef: org.Personal_GH
           payloadConditions:
             - key: targetBranch
               operator: Equals

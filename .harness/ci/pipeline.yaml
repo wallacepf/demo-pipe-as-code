@@ -12,7 +12,7 @@ pipeline:
   properties:
     ci:
       codebase:
-        connectorRef: Personal_GH
+        connectorRef: org.Personal_GH
         repoName: demo-pipe-as-code
         build: <+input>
 

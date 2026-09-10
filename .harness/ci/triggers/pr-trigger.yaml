@@ -12,7 +12,7 @@ trigger:
       spec:
         type: PullRequest
         spec:
-          connectorRef: Personal_GH
+          connectorRef: org.Personal_GH
           autoAbortPreviousExecutions: true
           payloadConditions:
             - key: targetBranch
