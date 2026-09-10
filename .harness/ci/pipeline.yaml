@@ -35,6 +35,15 @@ pipeline:
               automountServiceAccountToken: true
               nodeSelector: {}
               os: Linux
+              runtime:
+                spec:
+                  resources:
+                    limits:
+                      memory: 4Gi      # Aumente conforme necessário
+                      cpu: "2"         # Opcional
+                    requests:
+                      memory: 2Gi
+                      cpu: "1"
 
           # Cache Intelligence: connector/bucket/region come from Default
           # Settings (org connector org.aws_wallace_account, bucket name and
