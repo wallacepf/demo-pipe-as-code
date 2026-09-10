@@ -64,7 +64,7 @@ pipeline:
                     image: python:3.12-slim
                     shell: Sh
                     command: |
-                      pip install --no-cache-dir -r apps/todo-api/requirements.txt -r apps/todo-api/requirements-test.txt
+                      pip install -r apps/todo-api/requirements.txt -r apps/todo-api/requirements-test.txt
                       cd apps/todo-api
                       pytest --junitxml=test-results/junit.xml
                     intelligenceMode: true
