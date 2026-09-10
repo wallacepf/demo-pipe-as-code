@@ -61,6 +61,9 @@ pipeline:
                   name: Run Unit and Integration Tests
                   identifier: run_tests
                   spec:
+                    language: Python
+                    buildTool: Pytest
+                    runOnlySelectedTests: true
                     connectorRef: org.Docker_Hub_Anom
                     image: python:3.12-slim
                     shell: Sh
