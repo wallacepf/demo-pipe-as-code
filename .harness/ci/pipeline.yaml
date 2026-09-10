@@ -39,11 +39,11 @@ pipeline:
                 spec:
                   resources:
                     limits:
-                      memory: 4Gi      # Aumente conforme necessário
-                      cpu: "2"         # Opcional
+                      memory: 8Gi      # Aumente conforme necessário
+                      cpu: "4"         # Opcional
                     requests:
-                      memory: 2Gi
-                      cpu: "1"
+                      memory: 4Gi
+                      cpu: "2"
 
           # Cache Intelligence: connector/bucket/region come from Default
           # Settings (org connector org.aws_wallace_account, bucket name and
