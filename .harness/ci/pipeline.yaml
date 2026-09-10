@@ -24,7 +24,8 @@ pipeline:
         type: CI
         spec:
           cloneCodebase: true
-
+          envVariables:
+            PIP_CACHE_DIR: /root/.cache/pip
           # Self-managed build infra: runs on the org-level Kubernetes cluster
           # connector, reached through harness-delegate.
           infrastructure:
