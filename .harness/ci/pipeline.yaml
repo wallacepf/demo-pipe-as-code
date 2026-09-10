@@ -78,9 +78,6 @@ pipeline:
                     context: apps/todo-api
                     tags:
                       - <+pipeline.sequenceId>
-                  when:
-                    stageStatus: Success
-                    condition: <+codebase.build.type> == "Push"
           buildIntelligence:
             enabled: true
         description: ""
