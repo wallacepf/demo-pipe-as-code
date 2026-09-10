@@ -36,69 +36,47 @@ pipeline:
               nodeSelector: {}
               os: Linux
 
-          # Cache Intelligence: connector/bucket/region come from Default
-          # Settings (org connector org.aws_wallace_account, bucket name and
-          # region overridden at Project scope), so no inline overrides needed here.
+          # Cache Intelligence: pip has no default-path auto-detection in
+          # Cache Intelligence (Maven/Gradle/Bazel/Yarn/Go/.NET only), so the
+          # pip cache dir is declared explicitly, keyed off requirements.txt.
           caching:
             enabled: true
+            key: cache-{{ checksum "apps/todo-api/requirements.txt" }}
+            paths:
+              - /root/.cache/pip
 
-          # Build Intelligence: reuses the same object storage Default Settings
-          # as Cache Intelligence (org.aws_wallace_account) since there is no
-          # separate connector/bucket setting for ci_build_intel_*. Supported
-          # for Maven (3.9+) on Kubernetes self-hosted infra.
-          buildIntelligence:
-            enabled: true
+          # Build Intelligence is Maven/Gradle/Bazel-specific and doesn't
+          # apply to Python builds, so it's omitted here.
 
           # CI Steps
           execution:
             steps:
-              # Step 1: Run Tests with Test Intelligence (v2 Test step: the
-              # RunTests/TI-v1 step assumes the pom.xml sits at the clone
-              # root and has no working-directory equivalent, which breaks
-              # in this monorepo layout — see apps/todo-api/pom.xml).
+              # Step 1: Run Tests with Test Intelligence. Java's mvn test
+              # was OOM-ing on this Kubernetes infra (JVM heap under the pod's
+              # memory limits); pytest's per-test-process footprint is far
+              # lighter, which is the whole point of this migration.
               - step:
                   type: Test
                   name: Run Unit and Integration Tests
                   identifier: run_tests
                   spec:
                     connectorRef: org.Docker_Hub_Anom
-                    image: maven:3.9-eclipse-temurin-17
+                    image: python:3.12-slim
                     shell: Sh
                     workingDirectory: apps/todo-api
                     command: |
-                      mvn clean test -f apps/todo-api/pom.xml
+                      pip install --no-cache-dir -r requirements.txt -r requirements-test.txt
+                      pytest --junitxml=test-results/junit.xml
                     intelligenceMode: true
+                    envVariables:
+                      PIP_CACHE_DIR: /root/.cache/pip
                     reports:
                       type: JUnit
                       spec:
                         paths:
-                          - "target/surefire-reports/*.xml"
-              # Step 2: Build Application
-              - step:
-                  type: Run
-                  name: Build Application
-                  identifier: build_app
-                  spec:
-                    connectorRef: org.Docker_Hub_Anom
-                    image: maven:3.9-eclipse-temurin-17
-                    shell: Bash
-                    workingDirectory: apps/todo-api
-                    command: |
-                      echo "Building application with Maven"
-                      mvn clean package -DskipTests -B
+                          - "test-results/junit.xml"
 
-                      echo "Build completed successfully"
-                      ls -lh target/*.jar
-
-                    # Environment variables
-                    envVariables:
-                      MAVEN_OPTS: "-Xmx1024m"
-
-                  # When condition - only if tests passed
-                  when:
-                    stageStatus: Success
-
-              # Step 3: Build and Push Docker Image to Harness Artifact Registry (HAR)
+              # Step 2: Build and Push Docker Image to Harness Artifact Registry (HAR)
               # Only runs on Push builds (merge to main), not on PR builds,
               # to avoid publishing an image for every pull request.
               - step:
