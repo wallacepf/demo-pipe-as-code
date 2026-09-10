@@ -25,7 +25,7 @@ pipeline:
         spec:
           cloneCodebase: true
           envVariables:
-            PIP_CACHE_DIR: /root/.cache/pip
+            PIP_CACHE_DIR: /harness/.cache/pip
           # Self-managed build infra: runs on the org-level Kubernetes cluster
           # connector, reached through harness-delegate.
           infrastructure:
@@ -44,7 +44,7 @@ pipeline:
             enabled: true
             key: cache-{{ checksum "apps/todo-api/requirements.txt" }}
             paths:
-              - /root/.cache/pip
+              - /harness/.cache/pip
 
           # Build Intelligence is Maven/Gradle/Bazel-specific and doesn't
           # apply to Python builds, so it's omitted here.
