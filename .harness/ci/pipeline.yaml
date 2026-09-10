@@ -11,7 +11,10 @@ pipeline:
       codebase:
         connectorRef: org.Personal_GH
         repoName: demo-pipe-as-code
-        build: <+input>
+        build:
+          type: Branch
+          spec:
+            branch: main
   stages:
     - stage:
         name: Build and Test
