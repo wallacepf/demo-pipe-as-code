@@ -24,8 +24,6 @@ pipeline:
         type: CI
         spec:
           cloneCodebase: true
-          envVariables:
-            PIP_CACHE_DIR: /harness/.cache/pip
           # Self-managed build infra: runs on the org-level Kubernetes cluster
           # connector, reached through harness-delegate.
           infrastructure:
@@ -73,7 +71,7 @@ pipeline:
                       pytest --junitxml=test-results/junit.xml
                     intelligenceMode: true
                     envVariables:
-                      PIP_CACHE_DIR: /root/.cache/pip
+                      PIP_CACHE_DIR: /harness/.cache/pip
                     reports:
                       type: JUnit
                       spec:
