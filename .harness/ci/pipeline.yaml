@@ -12,7 +12,7 @@ pipeline:
         connectorRef: org.Personal_GH
         repoName: demo-pipe-as-code
         build:
-          type: Branch
+          type: branch
           spec:
             branch: main
   stages:
