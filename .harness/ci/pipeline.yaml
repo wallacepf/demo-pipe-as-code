@@ -57,6 +57,13 @@ pipeline:
                       spec:
                         paths:
                           - test-results/junit.xml
+              - stepGroup:
+                  name: Security Gate
+                  identifier: Security_Gate
+                  template:
+                    templateRef: CI_Security_Gates
+                    versionLabel: "1.0"
+                    gitBranch: main
               - step:
                   type: BuildAndPushDockerRegistry
                   name: Build and Push Image
