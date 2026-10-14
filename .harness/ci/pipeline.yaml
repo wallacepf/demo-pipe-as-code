@@ -22,14 +22,6 @@ pipeline:
         type: CI
         spec:
           cloneCodebase: true
-          infrastructure:
-            type: KubernetesDirect
-            spec:
-              connectorRef: org.kindcluster
-              namespace: dev-env-ci
-              automountServiceAccountToken: true
-              nodeSelector: {}
-              os: Linux
           caching:
             enabled: true
             key: cache-{{ checksum "apps/todo-api/requirements.txt" }}
@@ -80,4 +72,10 @@ pipeline:
                       - <+pipeline.sequenceId>
           buildIntelligence:
             enabled: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
         description: ""
